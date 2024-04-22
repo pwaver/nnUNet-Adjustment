@@ -77,12 +77,14 @@
             "architecture": {
                 "network_class_name": "dynamic_network_architectures.architectures.unet.PlainConvUNet",
                 "arch_kwargs": {
-                    "n_stages": 6,
+                    "n_stages": 8,
                     "features_per_stage": [
                         32,
                         64,
                         128,
                         256,
+                        512,
+                        512,
                         512,
                         512
                     ],
@@ -111,9 +113,25 @@
                         [
                             3,
                             3
+                        ],
+                        [
+                            3,
+                            3
+                        ],
+                        [
+                            3,
+                            3
                         ]
                     ],
                     "strides": [
+                        [
+                            1,
+                            1
+                        ],
+                        [
+                            2,
+                            2
+                        ],
                         [
                             2,
                             2
@@ -145,9 +163,13 @@
                         2,
                         2,
                         2,
+                        2,
+                        2,
                         2
                     ],
                     "n_conv_per_stage_decoder": [
+                        2,
+                        2,
                         2,
                         2,
                         2,
@@ -182,48 +204,48 @@
     "foreground_intensity_properties_per_channel": {
         "0": {
             "max": 255.0,
-            "mean": 128.5711669921875,
+            "mean": 128.5712432861328,
             "median": 128.0,
             "min": 0.0,
             "percentile_00_5": 46.0,
             "percentile_99_5": 209.0,
-            "std": 31.36177635192871
+            "std": 31.361347198486328
         },
         "1": {
             "max": 255.0,
-            "mean": 124.87538146972656,
+            "mean": 124.87488555908203,
             "median": 124.0,
             "min": 0.0,
             "percentile_00_5": 43.0,
             "percentile_99_5": 206.0,
-            "std": 31.53031349182129
+            "std": 31.53023910522461
         },
         "2": {
             "max": 255.0,
-            "mean": 116.03276824951172,
+            "mean": 116.03387451171875,
             "median": 115.0,
             "min": 0.0,
             "percentile_00_5": 39.0,
             "percentile_99_5": 195.0,
-            "std": 29.838666915893555
+            "std": 29.839303970336914
         },
         "3": {
             "max": 255.0,
-            "mean": 124.48475646972656,
+            "mean": 124.48479461669922,
             "median": 124.0,
             "min": 0.0,
             "percentile_00_5": 42.0,
             "percentile_99_5": 205.0,
-            "std": 31.57120704650879
+            "std": 31.571245193481445
         },
         "4": {
             "max": 255.0,
-            "mean": 128.00563049316406,
+            "mean": 128.0052947998047,
             "median": 128.0,
             "min": 0.0,
             "percentile_00_5": 45.0,
             "percentile_99_5": 209.0,
-            "std": 31.459728240966797
+            "std": 31.459735870361328
         }
     }
 }

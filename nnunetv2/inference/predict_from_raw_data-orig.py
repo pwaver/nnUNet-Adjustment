@@ -536,51 +536,6 @@ class nnUNetPredictor(object):
         mirror_axes = self.allowed_mirroring_axes if self.use_mirroring else None
         prediction = self.network(x)
 
-       # Exploit here for onnx export
-
-        # Define the directory for saving the ONNX model
-        netAnalysisDir = "/home/billb/github/nnUNet-Adjustment/data/nnUNet_output/"
-        # onnx_model_dir = os.path.join(netAnalysisDir, "onnx_models")
-        # os.makedirs(onnx_model_dir, exist_ok=True)
-
-        # Set the model to evaluation mode
-        self.network.eval()
-
-        # Generate a dummy input for the export with shape of supplied input
-        dummy_input = torch.randn(1, *x.shape[1:], device=x.device)
-
-        # Save as onnx then as torch pth
-        # Define the path for the ONNX model
-        print("Exporting ONNX model...")
-        print(str(self.configuration_manager))
-        try:
-            lossFunctionName = self.configuration_manager.lossFunction
-        except:
-            lossFunctionName = "unspecified" #LOSS_FUNCTION_SPECIFIER # "DC_and_Focal_loss" #
-        onnxFileName = f"{self.network.__class__.__name__}-{self.configuration_manager.data_identifier}-{lossFunctionName}.onnx" # WATCHME confirm class weights
-        onnx_model_path = os.path.join(netAnalysisDir, onnxFileName)
-
-        # Export the model
-        torch.onnx.export(self.network, x, onnx_model_path, export_params=True, opset_version=15, verbose=True)
-        # torch.onnx.export(self.network, dummy_input, onnx_model_path, 
-        #                   export_params=True, opset_version=15, 
-        #                   do_constant_folding=True, verbose=True,
-        #                   input_names=['input'], output_names=['output'],
-        #                   dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}})
-
-        # torch.onnx.export(self.network, x, onnx_model_path, 
-        #                   export_params=True, opset_version=15, 
-        #                   do_constant_folding=True, verbose=True,
-        #                   input_names=['input'], output_names=['output'],
-        #                       dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}})
-
-        if self.verbose: print(f"Model exported at {onnx_model_path}")
-        
-        # Save as torch pth
-        import dill as pickle
-        torch.save(self.network, onnx_model_path.replace('.onnx', '-dill.pth'),pickle_module=pickle)
-        # torch.save(self.network, onnx_model_path.replace('.onnx', '.pth'))
-     
         if mirror_axes is not None:
             # check for invalid numbers in mirror_axes
             # x should be 5d for 3d images and 4d for 2d. so the max value of mirror_axes cannot exceed len(x.shape) - 3

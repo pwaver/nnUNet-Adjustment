@@ -591,3 +591,30 @@ def _maybe_copy_splits_file(splits_file: str, target_fname: str):
 
 if __name__ == '__main__':
     ExperimentPlanner(2, 8).plan_experiment()
+
+class CompressedExperimentPlanner(ExperimentPlanner):
+    def __init__(self, dataset_name_or_id: Union[str, int],
+                 gpu_memory_target_in_gb: float = 8,
+                 preprocessor_name: str = 'DefaultPreprocessor', plans_name: str = 'nnUNetPlans',
+                 overwrite_target_spacing: Union[List[float], Tuple[float, ...]] = None,
+                 suppress_transpose: bool = False):
+        super().__init__(dataset_name_or_id, gpu_memory_target_in_gb, preprocessor_name, plans_name, overwrite_target_spacing, suppress_transpose)
+        self.UNet_base_num_features = 32
+        self.UNet_class = PlainConvUNet
+        # the following two numbers are really arbitrary and were set to reproduce nnU-Net v1's configurations as
+        # much as possible
+        self.UNet_reference_val_3d = 560000001  # 455600128  550000000
+        self.UNet_reference_val_2d = 85000001  # 83252480
+        self.UNet_reference_com_nfeatures = 32
+        self.UNet_reference_val_corresp_GB = 8
+        self.UNet_reference_val_corresp_bs_2d = 12
+        self.UNet_reference_val_corresp_bs_3d = 2
+        self.UNet_featuremap_min_edge_length = 16
+        self.UNet_blocks_per_stage_encoder = (2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)
+        self.UNet_blocks_per_stage_decoder = (2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)
+        self.UNet_min_batch_size = 2
+        self.UNet_max_features_2d = 512
+        self.UNet_max_features_3d = 320
+        self.max_dataset_covered = 0.05 # we limit the batch size so that no more than 5% of the dataset can be seen
+        # in a single forward/backward pass
+
