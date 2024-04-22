@@ -366,7 +366,7 @@ class nnUNetTrainer(object):
                                    dice_class=MemoryEfficientSoftDiceLoss)
         else:
             loss = DC_and_CE_loss({'batch_dice': self.configuration_manager.batch_dice,
-                                   'smooth': 1e-5, 'do_bg': False, 'ddp': self.is_ddp}, {}, weight_ce=1, weight_dice=1,
+                                   'smooth': 1e-5, 'do_bg': False, 'ddp': self.is_ddp}, {'weight':[1.,20,20]}, weight_ce=1, weight_dice=1,
                                   ignore_label=self.label_manager.ignore_label, dice_class=MemoryEfficientSoftDiceLoss)
 
         # we give each output a weight which decreases exponentially (division by 2) as the resolution decreases
