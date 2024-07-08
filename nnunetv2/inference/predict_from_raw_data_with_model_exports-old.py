@@ -565,10 +565,13 @@ class nnUNetPredictor(object):
         if self.verbose: print(f"Model exported at {onnx_model_path}")
         
         # Save as torch pth
-        import dill as pickle
-        torch.save(self.network, onnx_model_path.replace('.onnx', '-dill.pth'),pickle_module=pickle)
+        import dill
+        torch.save(self.network, onnx_model_path.replace('.onnx', '-dill.pth'),pickle_module=dill)
         # torch.save(self.network, onnx_model_path.replace('.onnx', '.pth'))
      
+        # Save as torch script JIT
+        torch.jit.save(self.network, onnx_model_path.replace('.onnx', '-torchscript.pt'))
+        
         if mirror_axes is not None:
             # check for invalid numbers in mirror_axes
             # x should be 5d for 3d images and 4d for 2d. so the max value of mirror_axes cannot exceed len(x.shape) - 3
