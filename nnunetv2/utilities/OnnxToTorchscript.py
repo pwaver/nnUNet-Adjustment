@@ -1,5 +1,6 @@
 1+1
 import torch
+import torch.nn as nn
 import onnx
 import dill
 from onnx2torch import convert
@@ -15,22 +16,53 @@ gpuDevice = torch.device("cuda:0") if torch.cuda.is_available() else torch.devic
 
 modelPerOnnx = modelPerOnnx.to(gpuDevice)
 
-random_tensor = torch.randn(1, 5, 512, 512)
+random_tensor = torch.randn(2, 5, 512, 512)
 random_tensor.shape
 random_tensor = random_tensor.to(gpuDevice)
 
-result = modelPerOnnx(random_tensor)
+modelPerOnnx.eval()
+with torch.inference_mode():
+    result = modelPerOnnx(random_tensor)
+
 result.shape
 
+# torch.onnx.export(modelPerOnnx, random_tensor, onnxPath, 
+#                           export_params=True, opset_version=18, 
+#                           do_constant_folding=True, verbose=True,
+#                           input_names=['input'], output_names=['output'], training=torch.onnx.TrainingMode.EVAL)
+
+
+# torch.onnx.export(modelPerOnnx, random_tensor, onnxPath, 
+#                           export_params=True, opset_version=15, 
+#                           do_constant_folding=True, verbose=True,
+#                           input_names=['input'], output_names=['output'],
+#                           dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}, training=torch.onnx.TrainingMode.EVAL)
+
+
+
+# torchModelPath = onnxPath.replace(".onnx", "-torch-onnx.pt")
+
+# torch.save(modelPerOnnx, torchModelPath)
+
+# checkModel = torch.load(torchModelPath)
+
+# checkModel.eval()
+# with torch.inference_mode():
+#     result = checkModel(random_tensor)
+
+# result.shape
+
+
+# Define example inputs with different batch sizes
+example_input_1 = torch.randn(2, 5, 512, 512).to(gpuDevice)
+example_input_2 = torch.randn(4, 5, 512, 512).to(gpuDevice)
+
 # Scripted does not work:
-# scriptedModelperOnnx = torch.jit.script(modelPerOnnx)
+scriptedModelperOnnx = torch.jit.script(modelPerOnnx)
 # scripted_model.save("/home/ubuntu/U-Mamba-Adjustment/data/nets/UMambaBot-plans_unet_edge8_2d-DC_and_CE_loss-w-1-20-20-torchscript.pt")
 
 # Try traced # update: traced after re-import from onnx seems to work
-tracedModelperOnnx = torch.jit.trace(modelPerOnnx, random_tensor)
-# Error types: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
-# TracerWarning: Iterating over a tensor might cause the trace to be incorrect. Passing a tensor of different shape won't change the number of iterations executed (and might lead to errors or silently give incorrect results)
-# TracerWarning: Using len to get tensor shape might cause the trace to be incorrect. Recommended usage would be tensor.shape[0]. Passing a tensor of different shape might lead to errors or silently give incorrect results.
+tracedModelperOnnx = torch.jit.trace(modelPerOnnx, example_input_1, check_trace=False)
 
 tracedModelPath = onnxPath.replace(".onnx", "-torchscript-traced-onnx.pt")
 
@@ -44,9 +76,20 @@ tracedModel = torch.jit.load(tracedModelPath)
 
 tracedModel = tracedModel.to(gpuDevice)
 
-random_tensor = torch.randn(1, 5, 512, 512)
-random_tensor.shape
-random_tensor = random_tensor.to(gpuDevice)
+# random_tensor = torch.randn(2, 5, 512, 512)
+# random_tensor.shape
+# random_tensor = random_tensor.to(gpuDevice)
 
-result = tracedModel(random_tensor)
+# tracedModel = nn.DataParallel(tracedModel)
+tracedModel.eval()
+with torch.inference_mode():
+    result = tracedModel(example_input_2)
+
 result.shape
+
+
+# Trace the model with dynamic batch size
+tracedModelperOnnx = torch.jit.trace(modelPerOnnx, example_input_1, check_trace=False)
+
+# Test the traced model with a different batch size
+tracedModelperOnnx(example_input_2)
