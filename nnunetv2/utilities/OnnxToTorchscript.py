@@ -16,9 +16,11 @@ gpuDevice = torch.device("cuda:0") if torch.cuda.is_available() else torch.devic
 
 modelPerOnnx = modelPerOnnx.to(gpuDevice)
 
-random_tensor = torch.randn(2, 5, 512, 512)
+# For grins export back to onnx
+
+random_tensor = torch.randn(1, 5, 512, 512, device=gpuDevice, dtype=torch.float32)
 random_tensor.shape
-random_tensor = random_tensor.to(gpuDevice)
+# random_tensor = random_tensor.to(gpuDevice)
 
 modelPerOnnx.eval()
 with torch.inference_mode():
@@ -26,13 +28,22 @@ with torch.inference_mode():
 
 result.shape
 
-# torch.onnx.export(modelPerOnnx, random_tensor, onnxPath, 
+onnxOutputPath = onnxPath.replace(".onnx", "-torch-onnx.onnx")
+with torch.inference_mode():
+    torch.onnx.export(modelPerOnnx, random_tensor, onnxOutputPath, 
+                  export_params=True, opset_version=18, 
+                  do_constant_folding=True, verbose=True,
+                  input_names=['input'], output_names=['output'], 
+                  dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}, 
+                  training=torch.onnx.TrainingMode.EVAL)
+
+# torch.onnx.export(modelPerOnnx, random_tensor, onnxOutputPath, 
 #                           export_params=True, opset_version=18, 
 #                           do_constant_folding=True, verbose=True,
 #                           input_names=['input'], output_names=['output'], training=torch.onnx.TrainingMode.EVAL)
 
 
-# torch.onnx.export(modelPerOnnx, random_tensor, onnxPath, 
+# torch.onnx.export(modelPerOnnx, random_tensor, onnxOutputPath, 
 #                           export_params=True, opset_version=15, 
 #                           do_constant_folding=True, verbose=True,
 #                           input_names=['input'], output_names=['output'],
@@ -40,17 +51,17 @@ result.shape
 
 
 
-# torchModelPath = onnxPath.replace(".onnx", "-torch-onnx.pt")
+torchModelPath = onnxPath.replace(".onnx", "-torch-onnx.pt")
 
-# torch.save(modelPerOnnx, torchModelPath)
+torch.save(modelPerOnnx, torchModelPath)
 
-# checkModel = torch.load(torchModelPath)
+checkModel = torch.load(torchModelPath, weights_only=False)
 
-# checkModel.eval()
-# with torch.inference_mode():
-#     result = checkModel(random_tensor)
+checkModel.eval()
+with torch.inference_mode():
+    result = checkModel(random_tensor)
 
-# result.shape
+result.shape
 
 
 # Define example inputs with different batch sizes
