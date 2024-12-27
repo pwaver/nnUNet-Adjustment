@@ -8,7 +8,8 @@ from onnx2torch import convert
 import os
 rootPath = '/mnt/SliskiDrive/AWI/AWIBuffer/' if os.name == 'posix' else '/Volumes/Crucial X8/AWI/Data/'
 
-onnxPath = rootPath + "UMambaBot-plans_unet_edge8_epochs250_2d-DC_and_CE_loss-w-1-20-20.onnx"
+# onnxPath = rootPath + "UMambaBot-plans_unet_edge8_epochs250_2d-DC_and_CE_loss-w-1-20-20.onnx"
+onnxPath = rootPath + "PlainConvUNet-nnUNetPlans_3d_fullres-default.onnx"
 
 modelPerOnnx = convert(onnxPath)
 

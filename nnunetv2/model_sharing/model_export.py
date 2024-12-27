@@ -57,9 +57,9 @@ def export_pretrained_model(dataset_name_or_id: Union[int, str], output_file: st
                     for f in files:
                         zipf.write(join(source_folder, f), os.path.relpath(join(source_folder, f), nnUNet_results))
                 # just the summary.json file from the validation
-                else:
-                    source_file = join(trainer_output_dir, fold_folder, "validation", "summary.json")
-                    zipf.write(source_file, os.path.relpath(source_file, nnUNet_results))
+                # else:
+                #     source_file = join(trainer_output_dir, fold_folder, "validation", "summary.json")
+                #     zipf.write(source_file, os.path.relpath(source_file, nnUNet_results))
 
             source_folder = join(trainer_output_dir, f'crossval_results_folds_{folds_tuple_to_string(folds)}')
             if isdir(source_folder):
