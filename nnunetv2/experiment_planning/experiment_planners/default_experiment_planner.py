@@ -592,7 +592,7 @@ def _maybe_copy_splits_file(splits_file: str, target_fname: str):
 if __name__ == '__main__':
     ExperimentPlanner(2, 8).plan_experiment()
 
-class CompressedExperimentPlanner(ExperimentPlanner):
+class CompressionAdjustmentExperimentPlanner(ExperimentPlanner):
     def __init__(self, dataset_name_or_id: Union[str, int],
                  gpu_memory_target_in_gb: float = 8,
                  preprocessor_name: str = 'DefaultPreprocessor', plans_name: str = 'nnUNetPlans',
@@ -609,7 +609,7 @@ class CompressedExperimentPlanner(ExperimentPlanner):
         self.UNet_reference_val_corresp_GB = 8
         self.UNet_reference_val_corresp_bs_2d = 12
         self.UNet_reference_val_corresp_bs_3d = 2
-        self.UNet_featuremap_min_edge_length = 16
+        self.UNet_featuremap_min_edge_length = 8
         self.UNet_blocks_per_stage_encoder = (2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)
         self.UNet_blocks_per_stage_decoder = (2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)
         self.UNet_min_batch_size = 2
