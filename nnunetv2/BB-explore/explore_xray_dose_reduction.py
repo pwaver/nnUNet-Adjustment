@@ -38,7 +38,7 @@ def simulate_low_xray_dose(
         brightness_range: Range of brightness multiplication factors
         resolution_range: Range of resolution reduction factors
     
-    Returns:
+    Returns: 
         np.ndarray: Simulated low-dose image with same shape as input
     """
     # Ensure image is in format (1,1,H,W) as expected by batchgenerators
