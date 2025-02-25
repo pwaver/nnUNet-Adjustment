@@ -397,6 +397,7 @@ class nnUNetTrainer(object):
             loss = DC_and_CE_loss({'batch_dice': self.configuration_manager.batch_dice,
                                    'smooth': 1e-5, 'do_bg': False, 'ddp': self.is_ddp}, {'weight':torch.tensor([1., 20., 20.], device='cuda')}, weight_ce=1, weight_dice=1,
                                   ignore_label=self.label_manager.ignore_label, dice_class=MemoryEfficientSoftDiceLoss)
+            print("Weights: ", torch.tensor([1., 20., 20.], device='cuda'))
 
         if self._do_i_compile():
             loss.dc = torch.compile(loss.dc)
