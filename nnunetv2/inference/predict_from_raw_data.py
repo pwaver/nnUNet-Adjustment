@@ -96,9 +96,7 @@ class nnUNetPredictor(object):
         num_input_channels = determine_num_input_channels(plans_manager, configuration_manager, dataset_json)
         trainer_class = recursive_find_python_class(join(nnunetv2.__path__[0], "training", "nnUNetTrainer"),
                                                     trainer_name, 'nnunetv2.training.nnUNetTrainer')
-        if trainer_class is None:
-            raise RuntimeError(f'Unable to locate trainer class {trainer_name} in nnunetv2.training.nnUNetTrainer. '
-                               f'Please place it there (in any .py file)!')
+
         network = trainer_class.build_network_architecture(
             configuration_manager.network_arch_class_name,
             configuration_manager.network_arch_init_kwargs,
@@ -112,10 +110,6 @@ class nnUNetPredictor(object):
         self.configuration_manager = configuration_manager
         self.list_of_parameters = parameters
         self.network = network
-
-        # initialize network with first set of parameters, also see https://github.com/MIC-DKFZ/nnUNet/issues/2520
-        network.load_state_dict(parameters[0])
-
         self.dataset_json = dataset_json
         self.trainer_name = trainer_name
         self.allowed_mirroring_axes = inference_allowed_mirroring_axes
@@ -542,51 +536,6 @@ class nnUNetPredictor(object):
         mirror_axes = self.allowed_mirroring_axes if self.use_mirroring else None
         prediction = self.network(x)
 
-       # Exploit here for onnx export
-
-        # Define the directory for saving the ONNX model
-        netAnalysisDir = "/home/billb/github/nnUNet-Adjustment/data/nnUNet_output/"
-        # onnx_model_dir = os.path.join(netAnalysisDir, "onnx_models")
-        # os.makedirs(onnx_model_dir, exist_ok=True)
-
-        # Set the model to evaluation mode
-        self.network.eval()
-
-        # Generate a dummy input for the export with shape of supplied input
-        dummy_input = torch.randn(1, *x.shape[1:], device=x.device)
-
-        # Save as onnx then as torch pth
-        # Define the path for the ONNX model
-        print("Exporting ONNX model...")
-        print(str(self.configuration_manager))
-        try:
-            lossFunctionName = self.configuration_manager.lossFunction
-        except:
-            lossFunctionName = "unspecified" #LOSS_FUNCTION_SPECIFIER # "DC_and_Focal_loss" #
-        onnxFileName = f"{self.network.__class__.__name__}-{self.configuration_manager.data_identifier}-{lossFunctionName}.onnx" # WATCHME confirm class weights
-        onnx_model_path = os.path.join(netAnalysisDir, onnxFileName)
-
-        # Export the model
-        torch.onnx.export(self.network, x, onnx_model_path, export_params=True, opset_version=15, verbose=True)
-        # torch.onnx.export(self.network, dummy_input, onnx_model_path, 
-        #                   export_params=True, opset_version=15, 
-        #                   do_constant_folding=True, verbose=True,
-        #                   input_names=['input'], output_names=['output'],
-        #                   dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}})
-
-        # torch.onnx.export(self.network, x, onnx_model_path, 
-        #                   export_params=True, opset_version=15, 
-        #                   do_constant_folding=True, verbose=True,
-        #                   input_names=['input'], output_names=['output'],
-        #                       dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}})
-
-        if self.verbose: print(f"Model exported at {onnx_model_path}")
-        
-        # Save as torch pth
-        import dill as pickle
-        torch.save(self.network, onnx_model_path.replace('.onnx', '-dill.pth'),pickle_module=pickle)
-        # torch.save(self.network, onnx_model_path.replace('.onnx', '.pth'))
-     
         if mirror_axes is not None:
             # check for invalid numbers in mirror_axes
             # x should be 5d for 3d images and 4d for 2d. so the max value of mirror_axes cannot exceed len(x.shape) - 3
@@ -658,140 +607,54 @@ class nnUNetPredictor(object):
             raise e
         return predicted_logits
 
+    @torch.inference_mode()
     def predict_sliding_window_return_logits(self, input_image: torch.Tensor) \
             -> Union[np.ndarray, torch.Tensor]:
-        with torch.no_grad():
-            assert isinstance(input_image, torch.Tensor)
-            self.network = self.network.to(self.device)
-            self.network.eval()
+        assert isinstance(input_image, torch.Tensor)
+        self.network = self.network.to(self.device)
+        self.network.eval()
 
-            empty_cache(self.device)
+        empty_cache(self.device)
 
-            # Autocast can be annoying
-            # If the device_type is 'cpu' then it's slow as heck on some CPUs (no auto bfloat16 support detection)
-            # and needs to be disabled.
-            # If the device_type is 'mps' then it will complain that mps is not implemented, even if enabled=False
-            # is set. Whyyyyyyy. (this is why we don't make use of enabled=False)
-            # So autocast will only be active if we have a cuda device.
-            with torch.autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
-                assert input_image.ndim == 4, 'input_image must be a 4D np.ndarray or torch.Tensor (c, x, y, z)'
+        # Autocast can be annoying
+        # If the device_type is 'cpu' then it's slow as heck on some CPUs (no auto bfloat16 support detection)
+        # and needs to be disabled.
+        # If the device_type is 'mps' then it will complain that mps is not implemented, even if enabled=False
+        # is set. Whyyyyyyy. (this is why we don't make use of enabled=False)
+        # So autocast will only be active if we have a cuda device.
+        with torch.autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
+            assert input_image.ndim == 4, 'input_image must be a 4D np.ndarray or torch.Tensor (c, x, y, z)'
 
-                if self.verbose:
-                    print(f'Input shape: {input_image.shape}')
-                    print("step_size:", self.tile_step_size)
-                    print("mirror_axes:", self.allowed_mirroring_axes if self.use_mirroring else None)
+            if self.verbose: 
+                print(f'Input shape: {input_image.shape}')
+                print("step_size:", self.tile_step_size)
+                print("mirror_axes:", self.allowed_mirroring_axes if self.use_mirroring else None)
 
-                # if input_image is smaller than tile_size we need to pad it to tile_size.
-                data, slicer_revert_padding = pad_nd_image(input_image, self.configuration_manager.patch_size,
-                                                           'constant', {'value': 0}, True,
-                                                           None)
+            # if input_image is smaller than tile_size we need to pad it to tile_size.
+            data, slicer_revert_padding = pad_nd_image(input_image, self.configuration_manager.patch_size,
+                                                       'constant', {'value': 0}, True,
+                                                       None)
 
-                slicers = self._internal_get_sliding_window_slicers(data.shape[1:])
+            slicers = self._internal_get_sliding_window_slicers(data.shape[1:])
 
-                if self.perform_everything_on_device and self.device != 'cpu':
-                    # we need to try except here because we can run OOM in which case we need to fall back to CPU as a results device
-                    try:
-                        predicted_logits = self._internal_predict_sliding_window_return_logits(data, slicers,
-                                                                                               self.perform_everything_on_device)
-                    except RuntimeError:
-                        print(
-                            'Prediction on device was unsuccessful, probably due to a lack of memory. Moving results arrays to CPU')
-                        empty_cache(self.device)
-                        predicted_logits = self._internal_predict_sliding_window_return_logits(data, slicers, False)
-                else:
+            if self.perform_everything_on_device and self.device != 'cpu':
+                # we need to try except here because we can run OOM in which case we need to fall back to CPU as a results device
+                try:
                     predicted_logits = self._internal_predict_sliding_window_return_logits(data, slicers,
                                                                                            self.perform_everything_on_device)
-
-                empty_cache(self.device)
-                # revert padding
-                predicted_logits = predicted_logits[(slice(None), *slicer_revert_padding[1:])]
-        return predicted_logits
-
-    def predict_from_files_sequential(self,
-                           list_of_lists_or_source_folder: Union[str, List[List[str]]],
-                           output_folder_or_list_of_truncated_output_files: Union[str, None, List[str]],
-                           save_probabilities: bool = False,
-                           overwrite: bool = True,
-                           folder_with_segs_from_prev_stage: str = None):
-        """
-        Just like predict_from_files but doesn't use any multiprocessing. Slow, but sometimes necessary
-        """
-        if isinstance(output_folder_or_list_of_truncated_output_files, str):
-            output_folder = output_folder_or_list_of_truncated_output_files
-        elif isinstance(output_folder_or_list_of_truncated_output_files, list):
-            output_folder = os.path.dirname(output_folder_or_list_of_truncated_output_files[0])
-        else:
-            output_folder = None
-
-        ########################
-        # let's store the input arguments so that its clear what was used to generate the prediction
-        if output_folder is not None:
-            my_init_kwargs = {}
-            for k in inspect.signature(self.predict_from_files_sequential).parameters.keys():
-                my_init_kwargs[k] = locals()[k]
-            my_init_kwargs = deepcopy(
-                my_init_kwargs)  # let's not unintentionally change anything in-place. Take this as a
-            recursive_fix_for_json_export(my_init_kwargs)
-            maybe_mkdir_p(output_folder)
-            save_json(my_init_kwargs, join(output_folder, 'predict_from_raw_data_args.json'))
-
-            # we need these two if we want to do things with the predictions like for example apply postprocessing
-            save_json(self.dataset_json, join(output_folder, 'dataset.json'), sort_keys=False)
-            save_json(self.plans_manager.plans, join(output_folder, 'plans.json'), sort_keys=False)
-        #######################
-
-        # check if we need a prediction from the previous stage
-        if self.configuration_manager.previous_stage_name is not None:
-            assert folder_with_segs_from_prev_stage is not None, \
-                f'The requested configuration is a cascaded network. It requires the segmentations of the previous ' \
-                f'stage ({self.configuration_manager.previous_stage_name}) as input. Please provide the folder where' \
-                f' they are located via folder_with_segs_from_prev_stage'
-
-        # sort out input and output filenames
-        list_of_lists_or_source_folder, output_filename_truncated, seg_from_prev_stage_files = \
-            self._manage_input_and_output_lists(list_of_lists_or_source_folder,
-                                                output_folder_or_list_of_truncated_output_files,
-                                                folder_with_segs_from_prev_stage, overwrite, 0, 1,
-                                                save_probabilities)
-        if len(list_of_lists_or_source_folder) == 0:
-            return
-
-        label_manager = self.plans_manager.get_label_manager(self.dataset_json)
-        preprocessor = self.configuration_manager.preprocessor_class(verbose=self.verbose)
-
-        if output_filename_truncated is None:
-            output_filename_truncated = [None] * len(list_of_lists_or_source_folder)
-        if seg_from_prev_stage_files is None:
-            seg_from_prev_stage_files = [None] * len(seg_from_prev_stage_files)
-
-        ret = []
-        for li, of, sps in zip(list_of_lists_or_source_folder, output_filename_truncated, seg_from_prev_stage_files):
-            data, seg, data_properties = preprocessor.run_case(
-                li,
-                sps,
-                self.plans_manager,
-                self.configuration_manager,
-                self.dataset_json
-            )
-
-            print(f'perform_everything_on_device: {self.perform_everything_on_device}')
-
-            prediction = self.predict_logits_from_preprocessed_data(torch.from_numpy(data)).cpu()
-
-            if of is not None:
-                export_prediction_from_logits(prediction, data_properties, self.configuration_manager, self.plans_manager,
-                  self.dataset_json, of, save_probabilities)
+                except RuntimeError:
+                    print(
+                        'Prediction on device was unsuccessful, probably due to a lack of memory. Moving results arrays to CPU')
+                    empty_cache(self.device)
+                    predicted_logits = self._internal_predict_sliding_window_return_logits(data, slicers, False)
             else:
-                ret.append(convert_predicted_logits_to_segmentation_with_correct_shape(prediction, self.plans_manager,
-                     self.configuration_manager, self.label_manager,
-                     data_properties,
-                     save_probabilities))
+                predicted_logits = self._internal_predict_sliding_window_return_logits(data, slicers,
+                                                                                       self.perform_everything_on_device)
 
-        # clear lru cache
-        compute_gaussian.cache_clear()
-        # clear device cache
-        empty_cache(self.device)
-        return ret
+            empty_cache(self.device)
+            # revert padding
+            predicted_logits = predicted_logits[(slice(None), *slicer_revert_padding[1:])]
+        return predicted_logits
 
 
 def predict_entry_point_modelfolder():
@@ -1026,7 +889,7 @@ def predict_entry_point():
 
 
 if __name__ == '__main__':
-    ########################## predict a bunch of files
+    # predict a bunch of files
     from nnunetv2.paths import nnUNet_results, nnUNet_raw
 
     predictor = nnUNetPredictor(
@@ -1040,28 +903,42 @@ if __name__ == '__main__':
         allow_tqdm=True
     )
     predictor.initialize_from_trained_model_folder(
-        join(nnUNet_results, 'Dataset004_Hippocampus/nnUNetTrainer_5epochs__nnUNetPlans__3d_fullres'),
+        join(nnUNet_results, 'Dataset003_Liver/nnUNetTrainer__nnUNetPlans__3d_lowres'),
         use_folds=(0,),
         checkpoint_name='checkpoint_final.pth',
     )
+    predictor.predict_from_files(join(nnUNet_raw, 'Dataset003_Liver/imagesTs'),
+                                 join(nnUNet_raw, 'Dataset003_Liver/imagesTs_predlowres'),
+                                 save_probabilities=False, overwrite=False,
+                                 num_processes_preprocessing=2, num_processes_segmentation_export=2,
+                                 folder_with_segs_from_prev_stage=None, num_parts=1, part_id=0)
+
+    # predict a numpy array
+    from nnunetv2.imageio.simpleitk_reader_writer import SimpleITKIO
+
+    img, props = SimpleITKIO().read_images([join(nnUNet_raw, 'Dataset003_Liver/imagesTr/liver_63_0000.nii.gz')])
+    ret = predictor.predict_single_npy_array(img, props, None, None, False)
+
+    iterator = predictor.get_data_iterator_from_raw_npy_data([img], None, [props], None, 1)
+    ret = predictor.predict_from_data_iterator(iterator, False, 1)
+
+    # predictor = nnUNetPredictor(
+    #     tile_step_size=0.5,
+    #     use_gaussian=True,
+    #     use_mirroring=True,
+    #     perform_everything_on_device=True,
+    #     device=torch.device('cuda', 0),
+    #     verbose=False,
+    #     allow_tqdm=True
+    #     )
+    # predictor.initialize_from_trained_model_folder(
+    #     join(nnUNet_results, 'Dataset003_Liver/nnUNetTrainer__nnUNetPlans__3d_cascade_fullres'),
+    #     use_folds=(0,),
+    #     checkpoint_name='checkpoint_final.pth',
+    # )
     # predictor.predict_from_files(join(nnUNet_raw, 'Dataset003_Liver/imagesTs'),
-    #                              join(nnUNet_raw, 'Dataset003_Liver/imagesTs_predlowres'),
+    #                              join(nnUNet_raw, 'Dataset003_Liver/imagesTs_predCascade'),
     #                              save_probabilities=False, overwrite=False,
     #                              num_processes_preprocessing=2, num_processes_segmentation_export=2,
-    #                              folder_with_segs_from_prev_stage=None, num_parts=1, part_id=0)
-    #
-    # # predict a numpy array
-    # from nnunetv2.imageio.simpleitk_reader_writer import SimpleITKIO
-    #
-    # img, props = SimpleITKIO().read_images([join(nnUNet_raw, 'Dataset003_Liver/imagesTr/liver_63_0000.nii.gz')])
-    # ret = predictor.predict_single_npy_array(img, props, None, None, False)
-    #
-    # iterator = predictor.get_data_iterator_from_raw_npy_data([img], None, [props], None, 1)
-    # ret = predictor.predict_from_data_iterator(iterator, False, 1)
-
-    ret = predictor.predict_from_files_sequential(
-        [['/media/isensee/raw_data/nnUNet_raw/Dataset004_Hippocampus/imagesTs/hippocampus_002_0000.nii.gz'], ['/media/isensee/raw_data/nnUNet_raw/Dataset004_Hippocampus/imagesTs/hippocampus_005_0000.nii.gz']],
-        '/home/isensee/temp/tmp', False, True, None
-    )
-
-
+    #                              folder_with_segs_from_prev_stage='/media/isensee/data/nnUNet_raw/Dataset003_Liver/imagesTs_predlowres',
+    #                              num_parts=1, part_id=0)
