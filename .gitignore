@@ -3,13 +3,17 @@ __pycache__/
 *.py[cod]
 **/*pyc
 *$py.class
-
+*.b2nd
+*.b2nd.gz
+*.b2nd.gz.part
 *.pth 
 *.pt
 *.onnx
 *.npz
 *.npy
 *.pkl
+data/*
+
 
 **/.DS_Store
 
