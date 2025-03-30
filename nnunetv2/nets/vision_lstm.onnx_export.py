@@ -269,22 +269,33 @@ class LayerNorm(nn.Module):
 
 
 class MultiHeadLayerNorm(LayerNorm):
+    def __init__(self, ndim: int = -1, weight: bool = True, bias: bool = False, eps: float = 1e-5, residual_weight: bool = True):
+        super().__init__(ndim=ndim, weight=weight, bias=bias, eps=eps, residual_weight=residual_weight)
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.ndim == 4, "Input must be 4D tensor (B, NH, S, DH)"
-        B, NH, S, DH = x.shape
-
-        gn_in_1 = x.transpose(1, 2)  # (B, S, NH, DH)
-        gn_in_2 = gn_in_1.reshape(B * S, NH * DH)  # (B * S, NH * DH)
-        out = F.group_norm(
-            gn_in_2,
-            num_groups=NH,
+        orig_shape = x.shape
+        
+        # Normalize over the last dimension only
+        x = x.view(-1, self.ndim)
+        x = F.layer_norm(
+            x,
+            normalized_shape=[self.ndim],  # Use static shape from initialization
             weight=self.weight_proxy,
             bias=self.bias,
             eps=self.eps,
-        )  # .to(x.dtype)
-        # (B * S), (NH * DH) -> (B, S, NH, DH) -> (B, NH, S, DH)
-        out = out.view(B, S, NH, DH).transpose(1, 2)
-        return out
+        )
+        x = x.view(orig_shape)
+        return x
+
+
+def create_causal_mask(S, device):
+    # Create indices
+    row_ids = torch.arange(S, device=device).unsqueeze(1)
+    col_ids = torch.arange(S, device=device).unsqueeze(0)
+    # Create mask where row_id >= col_id
+    causal_mask = (row_ids >= col_ids).to(torch.bool)
+    return causal_mask
 
 
 class MatrixLSTMCell(nn.Module):
@@ -321,7 +332,7 @@ class MatrixLSTMCell(nn.Module):
         if S in self.causal_mask_cache:
             causal_mask = self.causal_mask_cache[(S, str(q.device))]
         else:
-            causal_mask = torch.tril(torch.ones(S, S, dtype=torch.bool, device=q.device))
+            causal_mask = create_causal_mask(S, q.device)
             self.causal_mask_cache[(S, str(q.device))] = causal_mask
 
         h_state = parallel_stabilized_simple(
