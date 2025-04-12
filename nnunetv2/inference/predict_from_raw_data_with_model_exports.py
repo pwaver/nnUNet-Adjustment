@@ -557,7 +557,7 @@ class nnUNetPredictor(object):
 
         # Define the directory for saving the ONNX model
         # netAnalysisDir = "/home/billb/github/U-Mamba-Adjustment/data/nets/"
-        netAnalysisDir = "/home/billb/github/nnUNet-Adjustment/data/nets/"
+        netAnalysisDir = "/home/ubuntu/nnUNet-Adjustment/data/nets/"
         # onnx_model_dir = os.path.join(netAnalysisDir, "onnx_models")
         # os.makedirs(onnx_model_dir, exist_ok=True)
 
