@@ -389,6 +389,7 @@ class nnUNetTrainer(object):
             self.oversample_foreground_percent = oversample_percent
 
     def _build_loss(self):
+        class_weights = torch.tensor([1., 10., 40.], device=self.device) # Alert need mod for Apple Silicon mps
         if self.label_manager.has_regions:
             loss = DC_and_BCE_loss({},
                                    {'batch_dice': self.configuration_manager.batch_dice,
@@ -397,9 +398,9 @@ class nnUNetTrainer(object):
                                    dice_class=MemoryEfficientSoftDiceLoss)
         else:
             loss = DC_and_CE_loss({'batch_dice': self.configuration_manager.batch_dice,
-                                   'smooth': 1e-5, 'do_bg': False, 'ddp': self.is_ddp}, {'weight':torch.tensor([1., 20., 20.], device='cuda')}, weight_ce=1, weight_dice=1,
+                                   'smooth': 1e-5, 'do_bg': False, 'ddp': self.is_ddp}, {'weight':class_weights}, weight_ce=1, weight_dice=1,
                                   ignore_label=self.label_manager.ignore_label, dice_class=MemoryEfficientSoftDiceLoss)
-            print("Weights: ", torch.tensor([1., 20., 20.], device='cuda'))
+            print("Weights: ", class_weights)
 
         if self._do_i_compile():
             loss.dc = torch.compile(loss.dc)
