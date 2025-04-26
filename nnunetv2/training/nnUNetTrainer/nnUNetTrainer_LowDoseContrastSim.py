@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainerV2
+from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
 from batchgenerators.transforms.abstract_transforms import AbstractTransform, Compose
 from batchgenerators.transforms.noise_transforms import GaussianNoiseTransform
 from batchgenerators.transforms.color_transforms import ContrastAugmentationTransform
@@ -20,14 +20,14 @@ class PoissonNoiseTransform(AbstractTransform):
             data_dict['data'] = noisy_data / scale
         return data_dict
 
-class nnUNetTrainer_LowDoseContrastSim(nnUNetTrainerV2):
+class nnUNetTrainer_LowDoseContrastSim(nnUNetTrainer):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True, device: torch.device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
         self.log("Using Custom Trainer nnUNetTrainer_LowDoseContrastSim with 30% low dose simulation")
 
-    def get_moreDA_augmentation(self, *args, **kwargs):
+    def get_training_transforms(self, *args, **kwargs):
         # Get the default augmentations from the parent class
-        transforms = super().get_moreDA_augmentation(*args, **kwargs)
+        transforms = super().get_training_transforms(*args, **kwargs)
 
         # Define low dose simulation transforms using our tested parameters
         low_dose_sim = Compose([
