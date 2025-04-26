@@ -135,3 +135,6 @@ ENV/
 *.model
 
 !documentation/assets/scribble_example.png
+data/nnUNet_preprocessed/Dataset332_Angiography/dataset_fingerprint.json
+data/nnUNet_preprocessed/Dataset332_Angiography/dataset.json
+data/nnUNet_raw/Dataset332_Angiography/dataset.json
