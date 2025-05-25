@@ -119,6 +119,10 @@ By the way, in the onnx export call we wish to specify the input shape and furth
 
 onnx.export(netModel, dummy_input, "model.onnx", verbose=True, input_names=['input'], output_names=['output'], dynamic_axes={'input' : {0 : 'batch_size'}, 'output' : {0 : 'batch_size'}})
 
+## **Reduced dose simulation training
+
+nnUNetv2_train 332  2d all -p nnUNetResEncUNetLPlans -tr nnUNetTrainer_LowDoseContrastSim
+
 
 ## **Export to PyTorch**
 
