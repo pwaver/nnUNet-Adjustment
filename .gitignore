@@ -1,6 +1,7 @@
 **/dataset*.json
 dataset*json
-data*.json
+**/data*.json
+**/data*.json
 **/data*.json
 
 # Byte-compiled / optimized / DLL files
