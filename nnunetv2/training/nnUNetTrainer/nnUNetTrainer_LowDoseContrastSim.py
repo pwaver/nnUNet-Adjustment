@@ -21,8 +21,8 @@ class PoissonNoiseTransform(AbstractTransform):
         return data_dict
 
 class nnUNetTrainer_LowDoseContrastSim(nnUNetTrainer):
-    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True, device: torch.device = torch.device('cuda')):
-        super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, device: torch.device = torch.device('cuda'), *args, **kwargs):
+        super().__init__(plans, configuration, fold, dataset_json, device, *args, **kwargs)
         self.log("Using Custom Trainer nnUNetTrainer_LowDoseContrastSim with 30% low dose simulation")
 
     def get_training_transforms(self, *args, **kwargs):
