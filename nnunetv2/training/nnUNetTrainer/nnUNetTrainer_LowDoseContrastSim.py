@@ -5,6 +5,7 @@ from batchgenerators.transforms.abstract_transforms import AbstractTransform, Co
 from batchgenerators.transforms.noise_transforms import GaussianNoiseTransform
 from batchgenerators.transforms.color_transforms import ContrastAugmentationTransform
 from batchgeneratorsv2.transforms.utils.compose import ComposeTransforms
+from torch.utils.data import DataLoader
 
 # At deployment:
 # nnUNetv2_train DATASET_NAME_OR_ID CONFIGURATION FOLD -tr nnUNetTrainer_LowDoseContrastSim
@@ -12,31 +13,34 @@ from batchgeneratorsv2.transforms.utils.compose import ComposeTransforms
 class PoissonNoiseTransform(AbstractTransform):
     def __init__(self, p_per_sample=1.0):
         self.p_per_sample = p_per_sample
+
     def __call__(self, **data_dict):
         if np.random.uniform() < self.p_per_sample:
             data = data_dict['image']
             # Convert to numpy if it's a tensor
             if torch.is_tensor(data):
                 data = data.cpu().numpy()
-            
+
             # Ensure data is positive and finite
             data = np.clip(data, 0, None)  # Clip negative values to 0
             data = np.nan_to_num(data, nan=0.0, posinf=0.0, neginf=0.0)  # Handle NaNs and infinities
-            
+
             # Scale the data to a reasonable range for Poisson noise
             scale = 200.0  # Matches our tested value for maximum graininess
             scaled_data = data * scale
-            
+
             # Generate Poisson noise
             noisy_data = np.random.poisson(scaled_data)
-            
+
             # Scale back and ensure valid range
             noisy_data = np.clip(noisy_data / scale, 0, 1)
-            
-            # Convert back to tensor with the same device as input
+
+            # Convert back to tensor with the same device and precision as input
             if torch.is_tensor(data_dict['image']):
                 noisy_data = torch.from_numpy(noisy_data).to(data_dict['image'].device)
-            
+                # Ensure the same precision as the input
+                noisy_data = noisy_data.to(data_dict['image'].dtype)
+
             data_dict['image'] = noisy_data
         return data_dict
 
@@ -75,7 +79,3 @@ class nnUNetTrainer_LowDoseContrastSim(nnUNetTrainer):
         ])
 
         return all_transforms
-
-    # You might need to override other DA-related methods depending on
-    # exactly how augmentation is structured in your nnUNet version and base class.
-    # Check `nnUNetTrainerV2.initialize_data_augmentation` and related methods.
