@@ -1,16 +1,17 @@
 {
-	"channel_names":{
-		"0":"0",
-		"1":"1",
-		"2":"2",
-		"3":"3",
-		"4":"4"
-	},
-	"labels":{
-		"background":0,
-		"C":1,
-		"V":2
-	},
-	"numTraining":9630,
-	"file_ending":".png"
+    "_comment": "Dataset contains 5-channel angiography data at 7.5Hz (every other frame) with 5-frame neighborhoods. Labels include background (0), C (1), and V (2). Data sourced from WebknossosAngiogramsRevisedUInt8List.h5 and WebknossosAnnotationsRevisedIndicized-3.h5. Generated on 2025-04-26 22:49:19.",
+    "channel_names": {
+        "0": "0",
+        "1": "1",
+        "2": "2",
+        "3": "3",
+        "4": "4"
+    },
+    "labels": {
+        "background": 0,
+        "catheter": 1,
+        "vessel": 2
+    },
+    "numTraining": 9477,
+    "file_ending": ".png"
 }
