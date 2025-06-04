@@ -69,6 +69,7 @@ Example:
         use_folds=(0,),
         checkpoint_name='checkpoint_final.pth',
     )
+    
     # variant 1: give input and output folders
     predictor.predict_from_files(join(nnUNet_raw, 'Dataset003_Liver/imagesTs'),
                                  join(nnUNet_raw, 'Dataset003_Liver/imagesTs_predlowres'),

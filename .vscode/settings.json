@@ -1,0 +1,4 @@
+{
+    "python.defaultInterpreterPath": "/Users/billb/github/nnUNet-Adjustment/.venv-uv/bin/python",
+    "python.terminal.activateEnvironment": true
+}
