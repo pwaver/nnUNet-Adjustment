@@ -1,3 +1,4 @@
+from typing import Union
 from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
 from nnunetv2.utilities.plans_handling.plans_handler import ConfigurationManager, PlansManager
 from torch import nn
@@ -25,3 +26,22 @@ class nnUNetTrainerUxLSTMBot(nnUNetTrainer):
         print("UxLSTMBot: {}".format(model))
 
         return model
+
+
+    # @staticmethod
+    # def build_network_architecture(architecture_class_name: str,
+    #                                 arch_init_kwargs: dict,
+    #                                 arch_init_kwargs_req_import:Union[List[str], Tuple[str, ...]], 
+    #                                 num_input_channels: int,
+    #                                 num_output_channels: int,
+    #                                 enable_deep_supervision: bool = True) -> nn.Module:
+        
+    #     plans_manager = PlansManager(dict)
+    #     configuration_manager = ConfigurationManager(dict)
+    #     num_input_channels = 1
+    #     enable_deep_supervision = True
+
+    #     model = get_uxlstm_bot_2d_from_plans(plans_manager, dataset_json, configuration_manager,
+    #                                       num_input_channels, deep_supervision=enable_deep_supervision)
+        
+    #     return model
