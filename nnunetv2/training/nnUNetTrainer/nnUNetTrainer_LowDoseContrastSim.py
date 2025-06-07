@@ -13,8 +13,6 @@ from nnunetv2.training.data_augmentation.custom_transforms.LowDoseTransform impo
 # At deployment:
 # nnUNetv2_train DATASET_NAME_OR_ID CONFIGURATION FOLD -tr nnUNetTrainer_LowDoseContrastSim
 
-
-
 class nnUNetTrainer_LowDoseContrastSim(nnUNetTrainer):
     """nnUNet trainer with low dose contrast simulation for fluoroscopic cardiac angiography.
     
