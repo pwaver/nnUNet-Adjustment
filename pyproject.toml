@@ -30,6 +30,7 @@ keywords = [
     'nnunet'
 ]
 dependencies = [
+    "filelock>=4.2.1; python_version >= '3.11'",  # CVE-2026-112907/112913/112940
     "torch>=2.1.2",
     "acvl-utils>=0.2.3,<0.3", # 0.3 may bring breaking changes. Careful!
     "dynamic-network-architectures>=0.4.1,<0.5",
